@@ -22,8 +22,9 @@ describe('TreeStore', () => {
 	})
 
 	it('getAll should return all items', () => {
-		expect(treeStore.getAll()).toHaveLength(items.length)
-		expect(treeStore.getAll()).toEqual(expect.arrayContaining(items))
+		const allItems = treeStore.getAll()
+		expect(allItems).toHaveLength(items.length)
+		expect(allItems).toEqual(expect.arrayContaining(items))
 	})
 
 	it('getItem should return the correct item', () => {
@@ -127,8 +128,11 @@ describe('TreeStore', () => {
 			{ id: 1, parent: null, label: 'Duplicate Item 1' },
 		]
 		const treeStoreWithDuplicates = new TreeStore(duplicateItems)
-		expect(treeStoreWithDuplicates.getAll()).toEqual(
-			expect.arrayContaining([{ id: 1, parent: null, label: 'Item 1' }])
-		)
+		const allItems = treeStoreWithDuplicates.getAll()
+		// Проверяем, что массив содержит только один элемент
+		expect(allItems).toHaveLength(1)
+
+		// Проверяем, что массив содержит элемент с id 1
+		expect(allItems).toContainEqual({ id: 1, parent: null, label: 'Item 1' })
 	})
 })

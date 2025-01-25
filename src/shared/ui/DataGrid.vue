@@ -68,18 +68,16 @@ const redo = () => {
 const removeNode = (id: string | number) => {
 	treeStore.removeItem(id)
 	updateDate()
-	redrawRows()
 }
 
 // Добавляет новый узел в дерево
 const addNode = (id: string | number) => {
 	treeStore.addItem({
 		id: uidv4(),
-		label: `Айтем- ${uidv4()}`,
+		label: `Новый Айтем`,
 		parent: id,
 	})
 	updateDate()
-	redrawRows()
 }
 
 // Обновляет данные таблицы

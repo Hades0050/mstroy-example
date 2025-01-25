@@ -1,22 +1,34 @@
 import type { TTreeItem } from '../types'
 
 /**
+ * Интерфейс для управления деревом элементов.
+ */
+interface ITreeStore {
+	getAll(): TTreeItem[]
+	getItem(id: string | number): TTreeItem | undefined
+	getChildren(id: string | number): TTreeItem[]
+	getAllChildren(id: string | number): TTreeItem[]
+	getAllParents(id: string | number): TTreeItem[]
+	addItem(item: TTreeItem): void
+	removeItem(id: string | number): void
+	updateItem(updatedItem: TTreeItem): void
+}
+
+/**
  * Класс для управления деревом элементов.
  */
-export class TreeStore {
-	private items: Map<string | number, TTreeItem>
-	private childrenMap: Map<string | number, TTreeItem[]>
-	private parentMap: Map<string | number, string | number | null>
+export class TreeStore implements ITreeStore {
+	private items: Map<string | number, TTreeItem> = new Map()
+	private childrenMap: WeakMap<TTreeItem, Set<string | number>> = new WeakMap()
+	private allChildrenCache: Map<string | number, TTreeItem[]> = new Map()
+	private allParentsCache: Map<string | number, TTreeItem[]> = new Map()
 
 	/**
 	 * Конструктор класса TreeStore.
 	 * @param {TTreeItem[]} items - Массив элементов дерева.
 	 */
 	constructor(items: TTreeItem[]) {
-		this.items = new Map()
-		this.childrenMap = new Map()
-		this.parentMap = new Map()
-		this.initializeMaps(items)
+		this.initializeStore(items)
 	}
 
 	/**
@@ -24,23 +36,25 @@ export class TreeStore {
 	 * @private
 	 * @param {TTreeItem[]} items - Массив элементов дерева.
 	 */
-
-	private initializeMaps(items: TTreeItem[]): void {
+	private initializeStore(items: TTreeItem[]): void {
 		const seen = new Set<string | number>()
-		for (const item of items) {
+		items.forEach(item => {
 			if (!seen.has(item.id)) {
 				seen.add(item.id)
 				this.items.set(item.id, item)
-				this.parentMap.set(item.id, item.parent)
 				if (item.parent !== null) {
-					if (!this.childrenMap.has(item.parent)) {
-						this.childrenMap.set(item.parent, [])
+					const parentItem = this.items.get(item.parent)
+					if (parentItem) {
+						if (!this.childrenMap.has(parentItem)) {
+							this.childrenMap.set(parentItem, new Set())
+						}
+						this.childrenMap.get(parentItem)!.add(item.id)
 					}
-					this.childrenMap.get(item.parent)!.push(item)
 				}
 			}
-		}
+		})
 	}
+
 	/**
 	 * Возвращает все элементы дерева.
 	 * @returns {TTreeItem[]} - Массив всех элементов дерева.
@@ -64,7 +78,12 @@ export class TreeStore {
 	 * @returns {TTreeItem[]} - Массив дочерних элементов.
 	 */
 	getChildren(id: string | number): TTreeItem[] {
-		return this.childrenMap.get(id) || []
+		const item = this.items.get(id)
+		if (!item) return []
+		const childrenIds = this.childrenMap.get(item) || new Set()
+		return Array.from(childrenIds)
+			.map(childId => this.items.get(childId)!)
+			.filter(Boolean)
 	}
 
 	/**
@@ -73,13 +92,24 @@ export class TreeStore {
 	 * @returns {TTreeItem[]} - Массив всех потомков.
 	 */
 	getAllChildren(id: string | number): TTreeItem[] {
+		if (this.allChildrenCache.has(id)) {
+			return this.allChildrenCache.get(id)!
+		}
+
 		const result: TTreeItem[] = []
 		const stack: TTreeItem[] = this.getChildren(id)
+		const visited = new Set<string | number>()
+
 		while (stack.length > 0) {
 			const current = stack.pop()!
-			result.push(current)
-			stack.push(...(this.childrenMap.get(current.id) || []).reverse())
+			if (!visited.has(current.id)) {
+				visited.add(current.id)
+				result.push(current)
+				stack.push(...this.getChildren(current.id))
+			}
 		}
+
+		this.allChildrenCache.set(id, result)
 		return result
 	}
 
@@ -88,20 +118,24 @@ export class TreeStore {
 	 * @param {string | number} id - Идентификатор элемента.
 	 * @returns {TTreeItem[]} - Массив всех родителей в правильном порядке.
 	 */
+
 	getAllParents(id: string | number): TTreeItem[] {
+		if (this.allParentsCache.has(id)) {
+			return this.allParentsCache.get(id)!
+		}
 		const result: TTreeItem[] = []
 		let currentId: string | number | null = id
-
 		while (currentId !== null) {
-			const item = this.getItem(currentId)
+			const item = this.items.get(currentId)
 			if (item) {
-				result.push(item)
-				currentId = item.parent // Переходим к родительскому элементу
+				result.unshift(item)
+				currentId = item.parent
 			} else {
 				break
 			}
 		}
-		result.reverse() // Переворачиваем массив, чтобы родители были в правильном порядке
+
+		this.allParentsCache.set(id, result)
 		return result
 	}
 
@@ -112,43 +146,46 @@ export class TreeStore {
 	addItem(item: TTreeItem): void {
 		if (!this.items.has(item.id)) {
 			this.items.set(item.id, item)
-			this.parentMap.set(item.id, item.parent)
 			if (item.parent !== null) {
-				if (!this.childrenMap.has(item.parent)) {
-					this.childrenMap.set(item.parent, [])
+				const parentItem = this.items.get(item.parent)
+				if (parentItem) {
+					if (!this.childrenMap.has(parentItem)) {
+						this.childrenMap.set(parentItem, new Set())
+					}
+					this.childrenMap.get(parentItem)!.add(item.id)
 				}
-				this.childrenMap.get(item.parent)!.push(item)
 			}
+			this.clearCaches()
 		}
 	}
 
 	/**
-	 * Удаляет элемент из дерева и всех его потомков.
+	 * Удаляет элемент из дерева.
 	 * @param {string | number} id - Идентификатор элемента.
 	 */
 	removeItem(id: string | number): void {
-		const item = this.getItem(id)
-		if (item) {
-			// Рекурсивно удаляем всех дочерних элементов
-			const children = this.getChildren(id)
-			children.forEach(child => this.removeItem(child.id))
-			// Удаляем сам элемент
-			this.items.delete(id)
-			this.parentMap.delete(id)
-			if (this.childrenMap.has(id)) {
-				this.childrenMap.delete(id)
-			}
-			// Обновляем список дочерних элементов родителя
-			const parentId = item.parent
-			if (parentId !== null) {
-				const siblings = this.childrenMap.get(parentId)
-				if (siblings) {
-					this.childrenMap.set(
-						parentId,
-						siblings.filter(sibling => sibling.id !== id)
-					)
+		const itemToRemove = this.items.get(id)
+		if (itemToRemove) {
+			const stack = [itemToRemove]
+			while (stack.length > 0) {
+				const current = stack.pop()!
+				this.items.delete(current.id)
+				const children = this.childrenMap.get(current)
+				if (children) {
+					children.forEach(childId => {
+						const childItem = this.items.get(childId)
+						if (childItem) stack.push(childItem)
+					})
+					this.childrenMap.delete(current)
 				}
 			}
+			if (itemToRemove.parent !== null) {
+				const parentItem = this.items.get(itemToRemove.parent)
+				if (parentItem) {
+					this.childrenMap.get(parentItem)?.delete(id)
+				}
+			}
+			this.clearCaches()
 		}
 	}
 
@@ -157,29 +194,37 @@ export class TreeStore {
 	 * @param {TTreeItem} updatedItem - Обновленный элемент.
 	 */
 	updateItem(updatedItem: TTreeItem): void {
-		const item = this.getItem(updatedItem.id)
+		const item = this.items.get(updatedItem.id)
 		if (item) {
 			const oldParent = item.parent
-			item.parent = updatedItem.parent
-			item.label = updatedItem.label
-			this.parentMap.set(updatedItem.id, updatedItem.parent)
-
-			if (oldParent !== null) {
-				const oldChildren = this.childrenMap.get(oldParent)
-				if (oldChildren) {
-					this.childrenMap.set(
-						oldParent,
-						oldChildren.filter(child => child.id !== updatedItem.id)
-					)
+			if (oldParent !== updatedItem.parent) {
+				if (oldParent !== null) {
+					const oldParentItem = this.items.get(oldParent)
+					if (oldParentItem) {
+						this.childrenMap.get(oldParentItem)?.delete(updatedItem.id)
+					}
+				}
+				if (updatedItem.parent !== null) {
+					const newParentItem = this.items.get(updatedItem.parent)
+					if (newParentItem) {
+						if (!this.childrenMap.has(newParentItem)) {
+							this.childrenMap.set(newParentItem, new Set())
+						}
+						this.childrenMap.get(newParentItem)!.add(updatedItem.id)
+					}
 				}
 			}
-
-			if (updatedItem.parent !== null) {
-				if (!this.childrenMap.has(updatedItem.parent)) {
-					this.childrenMap.set(updatedItem.parent, [])
-				}
-				this.childrenMap.get(updatedItem.parent)!.push(item)
-			}
+			Object.assign(item, updatedItem)
+			this.clearCaches()
 		}
+	}
+
+	/**
+	 * Очищает кэши всех потомков и родителей.
+	 * @private
+	 */
+	private clearCaches(): void {
+		this.allChildrenCache.clear()
+		this.allParentsCache.clear()
 	}
 }

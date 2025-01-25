@@ -1,31 +1,49 @@
 <template>
-	<div class="ag-cell-value ag-cell ag-cell-not-inline-editing ag-cell-normal-height ag-cell-focus" aria-colindex="1"
-		aria-expanded="true" style="width: 100%">
-		<span :class="[
-			'ag-cell-wrapper ag-cell-expandable ag-row-group',
-			`ag-row-group-indent-${params.node?.level}`,
-		]" :style="`--ag-indentation-level: ${params.node?.level}`">
-			<div v-if="params.node?.allChildrenCount">
-				<span :class="[
-					!isExpandedNode ? 'ag-group-contracted' : 'ag-group-expanded ',
-				]" @click.stop="expandNode()"><span :class="[
-					'ag-icon',
-					!isExpandedNode ? 'ag-icon-tree-closed' : 'ag-icon-tree-open',
-				]"></span></span>
-			</div>
-			<div class="editing-mode-cells">
-				<span class="ag-group-value" data-ref="eValue">
+	<div
+		class="ag-cell-value ag-cell ag-cell-not-inline-editing ag-cell-normal-height"
+		style="width: 100%"
+		:aria-colindex="params.node?.level"
+	>
+		<span
+			:class="[
+				'ag-cell-wrapper  ',
+				`ag-row-group-indent-${params.node?.level}`,
+			]"
+			:style="`--ag-indentation-level: ${params.node?.level}`"
+		>
+			<span v-if="params.node?.allChildrenCount">
+				<span
+					:class="[
+						!isExpandedNode ? 'ag-group-contracted' : 'ag-group-expanded ',
+					]"
+					@click.stop="expandNode()"
+					><span
+						:class="[
+							'ag-icon',
+							!isExpandedNode ? 'ag-icon-tree-closed' : 'ag-icon-tree-open',
+						]"
+					></span
+				></span>
+			</span>
+			<span class="editing-mode-cells">
+				<span :style="params.node?.allChildrenCount ? 'font-weight:bold' : ''">
 					{{ params.node?.allChildrenCount ? 'Группа' : 'Элемент' }}
 				</span>
 				<div v-if="params?.isEditable()">
-					<button class="primary-button material-icons" @click.stop="params.onAddNodeClick">
+					<button
+						class="primary-button material-icons"
+						@click.stop="params.onAddNodeClick"
+					>
 						add
 					</button>
-					<button class="danger-button material-icons" @click.stop="params.onRemoveNodeClick">
+					<button
+						class="danger-button material-icons"
+						@click.stop="params.onRemoveNodeClick"
+					>
 						close
 					</button>
 				</div>
-			</div>
+			</span>
 		</span>
 	</div>
 </template>

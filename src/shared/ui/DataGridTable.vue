@@ -56,23 +56,25 @@ const emit = defineEmits<{
 	(e: 'updateData'): void
 }>()
 
-// А вот тут особенность библиотеки id всегда должен быть строкой иначе wanning
+// А вот тут особенность библиотеки id всегда должен быть строкой иначе warning
 const getRowId = ref<GetRowIdFunc>((params: GetRowIdParams) => {
 	return String(params.data.id)
 })
 
 const columnDefs = ref<ColDef[]>([
 	{
+		field: 'index',
 		headerName: '№ п\\п',
 		valueGetter: 'node.rowIndex + 1',
-		maxWidth: 100,
+		width: 100,
+		pinned: 'left',
 	},
 	{
 		field: 'label',
 		headerName: 'Наименование',
 		editable: () => isEditable,
-		cellStyle: () => {
-			return { fontWeight: 'bold' }
+		cellStyle: params => {
+			return { fontWeight: params.node?.allChildrenCount ? 'bold' : 'light' }
 		},
 		minWidth: 280,
 		sort: 'asc',
@@ -81,8 +83,9 @@ const columnDefs = ref<ColDef[]>([
 
 const autoGroupColumnDef = ref<ColDef>({
 	headerName: 'Категория',
+	field: 'category',
 	cellRenderer: DataGridCell,
-	cellStyle: { 'font-weight': 'bold' },
+
 	cellRendererParams: (params: any) => {
 		return {
 			isEditable: () => isEditable,
@@ -98,9 +101,8 @@ const autoGroupColumnDef = ref<ColDef>({
 })
 
 const getDataPath = ref<GetDataPath>(data => {
-	const getAllParents = treeStore.getAllParents(data.id).map(item => {
+	return treeStore.getAllParents(data.id).map(item => {
 		return item.id.toString()
 	})
-	return getAllParents
 })
 </script>
