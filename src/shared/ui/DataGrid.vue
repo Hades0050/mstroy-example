@@ -20,12 +20,13 @@
 </template>
 
 <script setup lang="ts">
-import { DataGridTable, DataGridTopPanel } from '../ui'
+import DataGridTable from './DataGridTable.vue'
+import DataGridTopPanel from './DataGridTopPanel.vue'
 import type { GridApi, GridReadyEvent } from 'ag-grid-community'
 import { ref, shallowRef, watch } from 'vue'
 import { TreeStore } from '../model'
-import { dataItems } from '../mocks/default'
 import { uidv4 } from '../helpers'
+import { dataItems } from '../mocks'
 
 // Создаем экземпляр TreeStore с начальными данными
 const treeStore = new TreeStore(dataItems)
@@ -49,7 +50,7 @@ const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api
 }
 
-// Перерисовывает строки таблицы
+// Перерисовывает строки таблицы (нужно для динамического изменения данных и форматирования категории так как происходи перерасчет дочерних элементов)
 const redrawRows = () => {
 	gridApi.value!.redrawRows()
 }
@@ -68,6 +69,7 @@ const redo = () => {
 const removeNode = (id: string | number) => {
 	treeStore.removeItem(id)
 	updateDate()
+	redrawRows()
 }
 
 // Добавляет новый узел в дерево
@@ -78,6 +80,7 @@ const addNode = (id: string | number) => {
 		parent: id,
 	})
 	updateDate()
+	redrawRows()
 }
 
 // Обновляет данные таблицы
