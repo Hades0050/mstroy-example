@@ -1,0 +1,44 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_BUILDKIT: '1'
+  GIT_STRATEGY: fetch
+  CONTAINER_IMAGE: adv-gitlab.advengineering.ru:5005/int-projects/dashboardeditor
+  CONTAINER_IMAGE_ANSIBLE: adv-gitlab.advengineering.ru:5005/int-projects/tools/ansible
+  RUNNER_TAG: 'int_builder'
+
+# Сборка и публикация образа в GitLAB registry
+build:
+  stage: build
+  only:
+    - dev
+    - prod
+    - test
+  tags:
+    - $RUNNER_TAG
+  before_script:
+    - sudo docker info
+    - sudo docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin <<<$CI_JOB_TOKEN
+  script:
+    - sudo docker pull $CONTAINER_IMAGE:latest || true
+    - sudo docker build --squash --cache-from $CONTAINER_IMAGE:latest --build-arg BUILDKIT_INLINE_CACHE=1 --tag $CI_REGISTRY_IMAGE:latest .
+    - sudo docker push $CONTAINER_IMAGE:latest
+
+deploy:
+  stage: deploy
+  only:
+    - dev
+    - prod
+    - test
+  tags:
+    - $RUNNER_TAG
+  needs: ['build']
+  before_script:
+    - sudo docker info
+    - sudo echo "glpat-4SSqc8xz3nXoy6ptxRDU" | sudo docker login  adv-gitlab.advengineering.ru:5005 -u root --password-stdin
+  script:
+    - sudo docker pull $CONTAINER_IMAGE_ANSIBLE:latest
+    - sudo docker run --rm -i -v $(pwd):/ansible -v $(pwd)/ansible/id_rsa:/root/.ssh/id_rsa  $CONTAINER_IMAGE_ANSIBLE:latest ansible-playbook ansible/playbook.yml -i ansible/inventory.ini -e "playbook_host=$CI_COMMIT_BRANCH"
