@@ -9,5 +9,5 @@ function generateLargeTree(size: number): TTreeItem[] {
 	return items
 }
 
-const size = 1000000
+const size = 500000
 export const largeTree = generateLargeTree(size)

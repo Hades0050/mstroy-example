@@ -27,9 +27,12 @@ import { ref, shallowRef, watch } from 'vue'
 import { TreeStore } from '../model'
 import { uidv4 } from '../helpers'
 import { dataItems } from '../mocks'
+// import {  largeTree } from '../mocks'
 
 // Создаем экземпляр TreeStore с начальными данными
 const treeStore = new TreeStore(dataItems)
+// Прогонка на большом объеме данных
+// const treeStore = new TreeStore(largeTree)
 
 // Режим редактирования
 const isEdit = ref(false)
