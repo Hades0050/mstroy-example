@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch, ref, shallowRef } from 'vue'
+import { ref } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import {
 	CellStyleModule,
@@ -24,7 +24,6 @@ import {
 	type GetDataPath,
 	type GetRowIdFunc,
 	type GetRowIdParams,
-	type GridApi,
 	type GridReadyEvent,
 	ModuleRegistry,
 	TextEditorModule,
